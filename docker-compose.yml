@@ -1,0 +1,52 @@
+version: '2'
+
+services:
+    volumes_data:
+        image: tianon/true
+        volumes:
+            - ./data/mysql:/var/lib/mysql
+            - ./data/sessions:/sessions
+
+    volumes_source:
+        image: tianon/true
+        volumes:
+            - ${HOST_APP_DIRECTORY}:/var/www/
+
+    apache2:
+        container_name: apache2
+        build:
+            context: ./docker/apache2
+            args:
+                - PHP_SOCKET=${PHP_SOCKET}
+                - WEB_DOCUMENT_ROOT=${WEB_DOCUMENT_ROOT}
+        volumes_from:
+             - volumes_source
+        volumes:
+            - ./logs/apache2:/var/log/apache2
+        ports:
+            - "80:80"
+        links:
+            - php-fpm
+        env_file: .env
+
+    php-fpm:
+        container_name: php
+        build:
+            context: ./docker/php-fpm/${PHP_VERSION}
+        volumes_from:
+            - volumes_source
+        expose:
+            - "9000"
+        links:
+            - mysql
+        env_file: .env
+
+    mysql:
+        container_name: ${MYSQL_HOST}
+        build:
+            context: ./docker/mysql/${MYSQL_VERSION}
+        volumes_from:
+            - volumes_data
+        ports:
+            - "3306:3306"
+        env_file: .env
